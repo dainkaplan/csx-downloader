@@ -8,7 +8,7 @@ import scalax.io.JavaConverters._
 
 /**
  * Downloads files in Json format, one file per document
- * */
+ */
 class JsonFilesDownloader(override val outputDir: Option[String]) extends FileDownloader with JsonFiles {}
 
 /**
@@ -18,7 +18,7 @@ class RawFilesDownloader(override val outputDir: Option[String]) extends FileDow
 
 /**
  * Mix in for the JsonFilesDownloader.
- * */
+ */
 trait JsonFiles extends IsFileDownloader {
     def tmpDirectory: java.io.File
     def restoreResumptionToken: Option[String] = {
@@ -59,12 +59,12 @@ object JsonFiles {
 
 /**
  * Mix in for RawFilesDownloader
- * */
+ */
 trait RawFiles extends IsFileDownloader {
     var count = 0
     def tmpDirectory: java.io.File
     def restoreResumptionToken: Option[String] = {
-        val (token, lastCount) = RawFiles.findLastToken(tmpDirectory.list(), citenet.oai2.Downloader.findResumptionToken)
+        val (token, lastCount) = RawFiles.findLastToken(tmpDirectory.list(), citenet.oai2.Downloader.findResumptionTokenInFile(tmpDirectory.getAbsolutePath()))
         count = lastCount
         token
     }
@@ -115,10 +115,9 @@ object RawFiles {
     }
 }
 
-
 /**
  * Base traite for the mix-ins, this insures they implement everything needed.
- * */
+ */
 trait IsFileDownloader {
     def restoreResumptionToken: Option[String]
     def saveContent(src: String)
@@ -127,8 +126,8 @@ trait IsFileDownloader {
 }
 
 /**
- * all the base-logic for saving the data to files. 
- * */
+ * all the base-logic for saving the data to files.
+ */
 trait FileDownloader extends Downloader with IsFileDownloader {
     val outputDir: Option[String] = None
     def tmpDirectory: java.io.File = outputDir match {

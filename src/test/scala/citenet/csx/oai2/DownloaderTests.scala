@@ -28,10 +28,18 @@ class DownloaderTests extends FunSuite {
 	
     test("can properly find resumption tokens") {
         expect(Some("bird is the word")) {
-            Downloader.findResumptionToken("<resumptionToken>bird is the word</resumptionToken>")
+            Downloader.findResumptionToken("    <resumptionToken>bird is the word</resumptionToken>")
         }
         expect(None) {
             Downloader.findResumptionToken("<resurrectionToken>elvis</resurrectionToken>")
+        }
+    }
+	
+    test("can properly find resumption token from real file") {
+        import scalax.io.JavaConverters._
+        expect(Some("10.1.1.1.2047-1751385-500-oai_dc")) {
+            val str = new java.io.File("oai-3687964461435121722.tmp-1").asInput.slurpString()
+            Downloader.findResumptionToken(str)
         }
     }
 }

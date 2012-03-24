@@ -82,7 +82,6 @@ object Downloader {
                 case _ => true // keep searching
             }
         })
-        println("Found token:" + token)
         token
     }
 }
