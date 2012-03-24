@@ -79,6 +79,12 @@ object Document {
         }
         doc
     }
+
+    def toDocumentList(content: String) = {
+        import xml.XML
+        val root = XML.loadString(content)
+        (root \\ "record").view.map(n => Document.fromXml(n))
+    }
 }
 
 case class DocumentHeader(

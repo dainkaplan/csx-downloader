@@ -45,7 +45,7 @@ class DocumentTests extends FunSuite {
         expect("") {
             doc.rights
         }
-        expect(List("1","2","3","4")) {
+        expect(List("1", "2", "3", "4")) {
             doc.relations
         }
         expect("application/pdf") {
@@ -54,5 +54,13 @@ class DocumentTests extends FunSuite {
         expect("http://www.getyourpaperhere.com/paper.pdf") {
             doc.source
         }
+    }
+
+    test("Can load a list of documents from OAI2 XML") {
+        import scalax.io.JavaConverters._
+        import java.io.File
+        val content = new File("oai-3687964461435121722.tmp-1").asInput.slurpString(io.Codec.UTF8)
+        val list = Document.toDocumentList(content)
+        assert(list.size === 500)
     }
 }

@@ -4,3 +4,4 @@ target
 .project
 .cache
 .classpath
+csx-json

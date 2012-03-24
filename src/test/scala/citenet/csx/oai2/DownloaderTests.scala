@@ -2,7 +2,7 @@ package citenet.csx.oai2
 import org.scalatest.FunSuite
 
 /* Keeps downloading the same file over and over */
-class MockDownloader extends BaseDownloader {
+class MockDownloader extends citenet.oai2.Downloader {
     val baseUrl = ""//new java.io.File("").getAbsolutePath()
     val initUrl = baseUrl + "oai-3687964461435121722.tmp-1"
     def resumeUrl(token: String) = "oai-3687964461435121722.tmp-1"
@@ -21,37 +21,30 @@ class DocumentDownloaderTests extends FunSuite {
         })
         assert(total === 500)
     }
-    
-    test("Can load a list of documents from xml") {
-        import scalax.io.JavaConverters._
-        import java.io.File
-        val content = new File("oai-3687964461435121722.tmp-1").asInput.slurpString(io.Codec.UTF8)
-        val list = DocumentDownloader.toDocumentList(content)
-        assert(list.size === 500)
-    }
 }
 
 class DownloaderTests extends FunSuite {
-
+	import citenet.oai2._
+	
     test("can properly find resumption tokens") {
         expect(Some("bird is the word")) {
-            BaseDownloader.findResumptionToken("<resumptionToken>bird is the word</resumptionToken>")
+            Downloader.findResumptionToken("<resumptionToken>bird is the word</resumptionToken>")
         }
         expect(None) {
-            BaseDownloader.findResumptionToken("<resurrectionToken>elvis</resurrectionToken>")
+            Downloader.findResumptionToken("<resurrectionToken>elvis</resurrectionToken>")
         }
     }
 }
 
-class RawFileDownloaderTests extends FunSuite {
+class RawFilesTests extends FunSuite {
 
-    test("can filter files") {
+    test("can filter raw files") {
         val files = Array(
             "oai-fsdanfASDF.tmp-1",
             "what am I doing here?",
             "oai-fsda214b3DF.tmp-15",
             "oai-fsdanffdhf.tmp-5")
-        val filtered = RawFileDownloader.filterFiles(files)
+        val filtered = RawFiles.filterFiles(files)
         val left = files.filter(f => !filtered.contains(f))
         assert(left.size === 1)
         expect("what am I doing here?") {
@@ -59,18 +52,18 @@ class RawFileDownloaderTests extends FunSuite {
         }
     }
 
-    test("can find last file") {
+    test("can find last raw file") {
         val files = Array(
             "oai-fsdanfASDF.tmp-1",
             "what am I doing here?",
             "oai-fsda214b3DF.tmp-15",
             "oai-fsdanffdhf.tmp-5")
         expect(Some("oai-fsda214b3DF.tmp-15")) {
-            RawFileDownloader.findLastFile(files)
+            RawFiles.findLastFile(files)
         }
     }
 
-    test("can find last token (faked)") {
+    test("can find last token from raw files") {
         val files = Array(
             "oai-fsdanfASDF.tmp-1",
             "what am I doing here?",
@@ -87,8 +80,7 @@ class RawFileDownloaderTests extends FunSuite {
             }
         }
         expect((Some("THE TOLKIEN"), 15)) {
-            RawFileDownloader.findLastToken(files, tokenFinder)
+            RawFiles.findLastToken(files, tokenFinder)
         }
     }
-
 }
