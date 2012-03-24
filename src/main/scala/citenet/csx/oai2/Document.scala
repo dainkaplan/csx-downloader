@@ -1,11 +1,11 @@
 package citenet.csx.oai2
 import java.util.Date
 
-object DocumentParser {
+object Document {
     import scala.xml.XML
     import scala.xml.NodeSeq
 
-    /*
+    /* Sample record
     <record>
       <header>
         <identifier>oai:CiteSeerX.psu:10.1.1.1.2047</identifier>
@@ -49,7 +49,7 @@ object DocumentParser {
      * and then iterator over it and use the wrapped setter functions to set
      * each field.
      */
-    def loadString(xml: String) = {
+    def fromXmlString(xml: String) = {
         val root = XML.loadString(xml)
         val doc = new Document()
         doc.header.identifier = (root \ "header" \ "identifier").text

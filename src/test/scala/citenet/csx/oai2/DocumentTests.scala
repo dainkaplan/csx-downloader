@@ -35,7 +35,7 @@ class DocumentTests extends FunSuite {
 """
 
     test("can parse OAI2 XML into a document") {
-        val doc = DocumentParser.loadString(sampleRecord)
+        val doc = Document.fromXmlString(sampleRecord)
         expect(List("Mr Awesome", "Mr Rad")) {
             doc.creators
         }

@@ -14,9 +14,11 @@ object DownloaderApp extends App {
 
     var dler = new RawFileDownloader(Some("./"), maxLoops = 3)
     dler.download()
+    // We can also do:
+    dler.download()
 }
 
-class RawFileDownloader(outputDir: Option[String] = None, maxLoops: Int) {
+class RawFileDownloader(outputDir: Option[String] = None, maxLoops: Int) extends Downloader {
     val tmpDirectory = outputDir match {
         case Some(dir) => {
             val f = new File(dir)
@@ -26,12 +28,18 @@ class RawFileDownloader(outputDir: Option[String] = None, maxLoops: Int) {
         case None => null
     }
     var count = 0
-    val dler = new Downloader(maxLoops)
 
-    def download(initialResumptionToken: Option[String] = None, initialCount: Int = 0, handler: (io.Source => Unit) = { _ => Unit }) {
-        val (lastToken, lastCount) = if (initialResumptionToken != None) findLastToken() else (initialResumptionToken, initialCount)
+    private def Noop(src: io.Source) = Unit
+    private def saveAndThen(src: io.Source)(then: (io.Source => Unit)) = {
+        createTempFile(src)
+        then(src)
+    }
+
+    override def download(handler: (io.Source => Unit) = Noop) {
+        val (lastToken, lastCount) = if (resumptionToken != None) findLastToken() else (resumptionToken, count)
         count = lastCount
-        dler.download(lastToken, handler = (src) => { createTempFile(src); handler(src) })
+        resumptionToken = lastToken
+        super.download((src) => saveAndThen(src)(handler))
     }
 
     def createTempFile(src: io.Source) = {
@@ -61,25 +69,25 @@ object RawFileDownloader {
         }
     }
 
-    def filterFiles(files:Array[String]) = {
-    	files
-    		.filter(fname => fname.startsWith("oai-"))
-        	.sortBy(fname => { val RawFileName(count) = fname; count })
-        	.reverse
+    def filterFiles(files: Array[String]) = {
+        files
+            .filter(fname => fname.startsWith("oai-"))
+            .sortBy(fname => { val RawFileName(count) = fname; count })
+            .reverse
     }
-    
+
     def findLastFile(files: Array[String]) = {
         val sorted = filterFiles(files)
-        if (sorted.size > 0)  Some(sorted(0)) else None
+        if (sorted.size > 0) Some(sorted(0)) else None
     }
-    
-    def findLastCount(files:Array[String]) = {
+
+    def findLastCount(files: Array[String]) = {
         findLastFile(files) match {
             case Some(file) => val RawFileName(count) = file; count
             case None => 0
         }
     }
-    
+
     def findLastToken(files: Array[String], getToken: String => Option[String]): Tuple2[Option[String], Int] = {
         val sorted = filterFiles(files)
         var lastToken: Option[String] = None
@@ -92,18 +100,19 @@ object RawFileDownloader {
     }
 }
 
-class Downloader(maxLoops: Int = 9999) {
+trait Downloader {
 
-    val maxDownloadTries = 10
     val baseUrl = "http://citeseerx.ist.psu.edu/oai2?verb=ListRecords"
     val initUrl = baseUrl + "&metadataPrefix=oai_dc"
     def resumeUrl(token: String) = baseUrl + "&resumptionToken=%s".format(token)
+    var maxLoops: Int = 9999
+    var maxDownloadTries = 10
+    var resumptionToken: Option[String] = None
 
-    def download(initialResumptionToken: Option[String] = None, handler: io.Source => Unit): Unit = {
-        var token = initialResumptionToken
+    def download(handler: io.Source => Unit): Unit = {
         for (i <- 1 to maxLoops) {
             var src: Option[io.Source] = None
-            val url = token match {
+            val url = resumptionToken match {
                 case Some(t) => resumeUrl(t)
                 case None => initUrl
             }
@@ -115,9 +124,9 @@ class Downloader(maxLoops: Int = 9999) {
             src match {
                 case Some(source) => {
                     source.closeAfter {
-                        token = Downloader.findResumptionToken(source)
+                        resumptionToken = Downloader.findResumptionToken(source)
                         handler(source)
-                        if (token == None) return // we're done
+                        if (resumptionToken == None) return // we're done
                     }
                 }
                 case None => return // either we errored out too many times, or we're done
@@ -151,7 +160,7 @@ object Downloader {
     def findResumptionToken(src: io.Source): Option[String] = {
         findResumptionToken(src.getLines.toSeq)
     }
-    
+
     def findResumptionToken(src: Seq[String]): Option[String] = {
         var token: Option[String] = None
         val regex = """^<resumptionToken>([^<]+)</resumptionToken>.*""".r
