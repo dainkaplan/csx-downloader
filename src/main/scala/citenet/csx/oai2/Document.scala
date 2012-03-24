@@ -44,7 +44,7 @@ object Document {
         setter(f.text)
     }
     protected def setTextNoNL(setter: String => Unit)(f: NodeSeq) = {
-        setter(f.text.replaceAll("""[\r\n\t]""",""))
+        setter(f.text.replaceAll("""[\r\n\t]""", ""))
     }
 
     /**
@@ -81,25 +81,24 @@ object Document {
     }
 }
 
-class Document {
-    class Header {
-        var identifier = ""
-        var datestamp = ""
-    }
+case class DocumentHeader(
+    var identifier: String = "",
+    var datestamp: String = "")
 
-    var header: Header = new Header()
-    var title = ""
-    var creators: List[String] = Nil
-    var publisher = ""
-    var subject = ""
-    var contributor = ""
-    var description = ""
-    var tags = ""
-    var dates: List[String] = Nil
-    var format = ""
-    var id = ""
-    var source = ""
-    var language = ""
-    var relations: List[String] = Nil
-    var rights = ""
+case class Document(
+    var header: DocumentHeader = new DocumentHeader(),
+    var title: String = "",
+    var creators: List[String] = Nil,
+    var publisher: String = "",
+    var subject: String = "",
+    var contributor: String = "",
+    var description: String = "",
+    var tags: String = "",
+    var dates: List[String] = Nil,
+    var format: String = "",
+    var id: String = "",
+    var source: String = "",
+    var language: String = "",
+    var relations: List[String] = Nil,
+    var rights: String = "") {
 }

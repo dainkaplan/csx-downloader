@@ -11,17 +11,6 @@ class DownloaderConfig {
     var maxDownloadTries: Int = 10
 }
 
-object DownloaderApp extends App {
-    var rawfiles = new RawFileDownloader(Some("./"))
-    rawfiles.maxLoops = 3
-
-    val dler = new DocumentDownloader(rawfiles)
-    // Blocks until it's done
-    dler.download(doc => {
-        println("[%s] -- %s".format(doc.source, doc.title))
-    })
-}
-
 class DocumentDownloader(dler: BaseDownloader) {
     /**
      * After a page of results has been downloaded, the handler will be called
@@ -126,7 +115,7 @@ object RawFileDownloader {
     }
 }
 
-trait Downloader extends BaseDownloader {
+class Downloader extends BaseDownloader {
     val baseUrl = "http://citeseerx.ist.psu.edu/oai2?verb=ListRecords"
     val initUrl = baseUrl + "&metadataPrefix=oai_dc"
     def resumeUrl(token: String) = baseUrl + "&resumptionToken=%s".format(token)
