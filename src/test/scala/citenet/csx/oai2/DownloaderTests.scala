@@ -1,20 +1,50 @@
 package citenet.csx.oai2
 import org.scalatest.FunSuite
 
+/* Keeps downloading the same file over and over */
+class MockDownloader extends BaseDownloader {
+    val baseUrl = ""//new java.io.File("").getAbsolutePath()
+    val initUrl = baseUrl + "oai-3687964461435121722.tmp-1"
+    def resumeUrl(token: String) = "oai-3687964461435121722.tmp-1"
+}
+
+class DocumentDownloaderTests extends FunSuite {
+    test("can download and parse an OAI2 file") {
+        var mock = new MockDownloader()
+        mock.maxLoops = 1
+        var total = 0
+        val dler = new DocumentDownloader(mock)
+        // Blocks until it's done
+        dler.download(doc => {
+            total += 1
+            //println("[%s] -- %s".format(doc.source, doc.title))
+        })
+        assert(total === 500)
+    }
+    
+    test("Can load a list of documents from xml") {
+        import scalax.io.JavaConverters._
+        import java.io.File
+        val content = new File("oai-3687964461435121722.tmp-1").asInput.slurpString(io.Codec.UTF8)
+        val list = DocumentDownloader.toDocumentList(content)
+        assert(list.size === 500)
+    }
+}
+
 class DownloaderTests extends FunSuite {
 
     test("can properly find resumption tokens") {
         expect(Some("bird is the word")) {
-            Downloader.findResumptionToken(Seq("<resumptionToken>bird is the word</resumptionToken>"))
+            BaseDownloader.findResumptionToken("<resumptionToken>bird is the word</resumptionToken>")
         }
         expect(None) {
-            Downloader.findResumptionToken(Seq("<resurrectionToken>elvis</resurrectionToken>"))
+            BaseDownloader.findResumptionToken("<resurrectionToken>elvis</resurrectionToken>")
         }
     }
 }
 
 class RawFileDownloaderTests extends FunSuite {
-    
+
     test("can filter files") {
         val files = Array(
             "oai-fsdanfASDF.tmp-1",
@@ -60,4 +90,5 @@ class RawFileDownloaderTests extends FunSuite {
             RawFileDownloader.findLastToken(files, tokenFinder)
         }
     }
+
 }

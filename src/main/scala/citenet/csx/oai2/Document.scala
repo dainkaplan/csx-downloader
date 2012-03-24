@@ -43,6 +43,9 @@ object Document {
     protected def setText(setter: String => Unit)(f: NodeSeq) = {
         setter(f.text)
     }
+    protected def setTextNoNL(setter: String => Unit)(f: NodeSeq) = {
+        setter(f.text.replaceAll("""[\r\n\t]""",""))
+    }
 
     /**
      * This is kind of gross, but the concept is that we create a field map,
@@ -51,11 +54,15 @@ object Document {
      */
     def fromXmlString(xml: String) = {
         val root = XML.loadString(xml)
+        fromXml(root)
+    }
+
+    def fromXml(root: NodeSeq) = {
         val doc = new Document()
         doc.header.identifier = (root \ "header" \ "identifier").text
         doc.header.datestamp = (root \ "header" \ "datestamp").text
         val fields = Map[String, NodeSeq => Unit](
-            "title" -> setText(doc.title_=),
+            "title" -> setTextNoNL(doc.title_=),
             "creator" -> setList(doc.creators_=),
             "description" -> setText(doc.description_=),
             "contributor" -> setText(doc.contributor_=),

@@ -4,6 +4,7 @@ import java.io.File
 import StringToURL._
 import CloseSourceAfter._
 import FileUtils._
+import scalax.io.JavaConverters._
 
 class DownloaderConfig {
     var maxLoops: Int = 9999
@@ -11,41 +12,66 @@ class DownloaderConfig {
 }
 
 object DownloaderApp extends App {
+    var rawfiles = new RawFileDownloader(Some("./"))
+    rawfiles.maxLoops = 3
 
-    var dler = new RawFileDownloader(Some("./"), maxLoops = 3)
-    dler.download()
-    // We can also do:
-    dler.download()
+    val dler = new DocumentDownloader(rawfiles)
+    // Blocks until it's done
+    dler.download(doc => {
+        println("[%s] -- %s".format(doc.source, doc.title))
+    })
 }
 
-class RawFileDownloader(outputDir: Option[String] = None, maxLoops: Int) extends Downloader {
+class DocumentDownloader(dler: BaseDownloader) {
+    /**
+     * After a page of results has been downloaded, the handler will be called
+     * once for each document within that set of results.
+     */
+    def download(handler: Document => Unit) = {
+        dler.download((content) => {
+            DocumentDownloader.toDocumentList(content).foreach(doc => {
+                handler(doc)
+            })
+        })
+    }
+}
+
+object DocumentDownloader {
+    def toDocumentList(content: String) = {
+        import xml.XML
+        val root = XML.loadString(content)
+        (root \\ "record").view.map(n => Document.fromXml(n))
+    }
+}
+
+class RawFileDownloader(outputDir: Option[String] = None) extends Downloader {
     val tmpDirectory = outputDir match {
         case Some(dir) => {
             val f = new File(dir)
             if (f.exists()) f
-            else throw new Exception("specified tmp dir \"%s\" doesn't exist!".format(dir))
+            else throw new Exception("Specified tmp dir \"%s\" doesn't exist!".format(dir))
         }
         case None => null
     }
     var count = 0
 
-    private def Noop(src: io.Source) = Unit
-    private def saveAndThen(src: io.Source)(then: (io.Source => Unit)) = {
+    protected def Noop(src: String) = Unit
+    protected def saveAndThen(src: String)(then: (String => Unit)) = {
         createTempFile(src)
         then(src)
     }
 
-    override def download(handler: (io.Source => Unit) = Noop) {
+    override def download(handler: (String => Unit) = Noop) {
         val (lastToken, lastCount) = if (resumptionToken != None) findLastToken() else (resumptionToken, count)
         count = lastCount
         resumptionToken = lastToken
         super.download((src) => saveAndThen(src)(handler))
     }
 
-    def createTempFile(src: io.Source) = {
+    def createTempFile(src: String) = {
         count += 1
         val f = File.createTempFile("oai-", ".tmp-%d".format(count), tmpDirectory)
-        writeToFile(f) { p => src.getLines().foreach(l => { p.println(l); println(l) }) }
+        writeToFile(f) { p => p.print(src) }
     }
 
     /**
@@ -56,7 +82,7 @@ class RawFileDownloader(outputDir: Option[String] = None, maxLoops: Int) extends
      */
     def findLastToken(): Tuple2[Option[String], Int] = {
         val targetDir = if (tmpDirectory == null) new File(System.getProperty("java.io.tmpdir")) else tmpDirectory
-        RawFileDownloader.findLastToken(targetDir.list(), Downloader.findResumptionToken(targetDir.getAbsolutePath()))
+        RawFileDownloader.findLastToken(targetDir.list(), BaseDownloader.findResumptionTokenInFile(targetDir.getAbsolutePath()))
     }
 }
 
@@ -100,76 +126,89 @@ object RawFileDownloader {
     }
 }
 
-trait Downloader {
-
+trait Downloader extends BaseDownloader {
     val baseUrl = "http://citeseerx.ist.psu.edu/oai2?verb=ListRecords"
     val initUrl = baseUrl + "&metadataPrefix=oai_dc"
     def resumeUrl(token: String) = baseUrl + "&resumptionToken=%s".format(token)
+}
+
+trait BaseDownloader {
+    val baseUrl: String
+    val initUrl: String
+    def resumeUrl(token: String): String
     var maxLoops: Int = 9999
     var maxDownloadTries = 10
     var resumptionToken: Option[String] = None
 
-    def download(handler: io.Source => Unit): Unit = {
+    def download(handler: String => Unit): Unit = {
         for (i <- 1 to maxLoops) {
-            var src: Option[io.Source] = None
+            var data: Option[String] = None
             val url = resumptionToken match {
                 case Some(t) => resumeUrl(t)
                 case None => initUrl
             }
             (1 to maxDownloadTries).takeWhile(cnt => {
                 println("%d [%d]: %s".format(i, cnt, url))
-                src = dataFromUrl(url)
-                src == None // Try again?
+                data = fetch(url)
+                data == None // Try again?
             })
-            src match {
-                case Some(source) => {
-                    source.closeAfter {
-                        resumptionToken = Downloader.findResumptionToken(source)
-                        handler(source)
-                        if (resumptionToken == None) return // we're done
-                    }
+
+            data match {
+                case Some(str) => {
+                    resumptionToken = BaseDownloader.findResumptionToken(str)
+                    handler(str)
+                    if (resumptionToken == None) return // we're done
                 }
                 case None => return // either we errored out too many times, or we're done
             }
         }
     }
 
-    /**
-     * Note: returned source must be closed!!
-     */
-    def dataFromUrl(url: URL): Option[io.Source] = {
+    def fetch(url: String): Option[String] = {
         try {
-            Some(io.Source.fromURL(url)(scala.io.Codec.UTF8))
+            if (url.startsWith("http"))
+                Some(new URL(url).asInput.slurpString(io.Codec.UTF8))
+            else
+                Some(new File(url).asInput.slurpString(io.Codec.UTF8))
         } catch {
             case _ => None
         }
     }
+
+    // ============================================================
+    // ======================== FOR JAVA ==========================
+    trait DownloadCallback {
+        def handleDownload(src: String)
+    }
+
+    def download(handler: DownloadCallback) {
+        download(handler.handleDownload _)
+    }
+    // ======================== FOR JAVA ==========================
+    // ============================================================
 }
 
-object Downloader {
+object BaseDownloader {
     /**
      * Searches for a resumption token within a file specified by filename.
      */
-    def findResumptionToken(path: String)(filename: String): Option[String] = {
-        val src = io.Source.fromFile(path + "/" + filename)
-        val token = findResumptionToken(src)
-        src.close()
+    def findResumptionTokenInFile(path: String)(filename: String): Option[String] = {
+        val str = new File(path + "/" + filename).asInput.slurpString(io.Codec.UTF8)
+        val token = findResumptionToken(str)
         token
     }
 
-    def findResumptionToken(src: io.Source): Option[String] = {
-        findResumptionToken(src.getLines.toSeq)
-    }
-
-    def findResumptionToken(src: Seq[String]): Option[String] = {
+    def findResumptionToken(str: String): Option[String] = {
         var token: Option[String] = None
         val regex = """^<resumptionToken>([^<]+)</resumptionToken>.*""".r
-        src.takeWhile(line => {
+        val lines = str.split("\n")
+        lines.reverse.takeWhile(line => {
             line.trim() match {
                 case regex(t) => token = Some(t); false
                 case _ => true // keep searching
             }
         })
+        println("Found token:" + token)
         token
     }
 }

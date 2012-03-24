@@ -12,10 +12,10 @@ object StringToURL {
  * Gives us utility methods for working with files.
  */
 object FileUtils {
-	def writeToFile(f: java.io.File)(op: java.io.PrintWriter => Unit) {
-		val p = new java.io.PrintWriter(f)
-		try { op(p) } finally { p.close() }
-	}
+    def writeToFile(f: java.io.File)(op: java.io.PrintWriter => Unit) {
+        val p = new java.io.PrintWriter(f, "utf-8")
+        try { op(p) } finally { p.close() }
+    }
 }
 
 /**
