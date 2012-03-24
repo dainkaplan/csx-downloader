@@ -11,6 +11,34 @@ class DownloaderTests extends FunSuite {
             Downloader.findResumptionToken(Seq("<resurrectionToken>elvis</resurrectionToken>"))
         }
     }
+}
+
+class RawFileDownloaderTests extends FunSuite {
+    
+    test("can filter files") {
+        val files = Array(
+            "oai-fsdanfASDF.tmp-1",
+            "what am I doing here?",
+            "oai-fsda214b3DF.tmp-15",
+            "oai-fsdanffdhf.tmp-5")
+        val filtered = RawFileDownloader.filterFiles(files)
+        val left = files.filter(f => !filtered.contains(f))
+        assert(left.size === 1)
+        expect("what am I doing here?") {
+            left(0)
+        }
+    }
+
+    test("can find last file") {
+        val files = Array(
+            "oai-fsdanfASDF.tmp-1",
+            "what am I doing here?",
+            "oai-fsda214b3DF.tmp-15",
+            "oai-fsdanffdhf.tmp-5")
+        expect(Some("oai-fsda214b3DF.tmp-15")) {
+            RawFileDownloader.findLastFile(files)
+        }
+    }
 
     test("can find last token (faked)") {
         val files = Array(

@@ -1,7 +1,11 @@
 package citenet.csx.oai2
 import java.util.Date
 
-/* Sample record
+object DocumentParser {
+    import scala.xml.XML
+    import scala.xml.NodeSeq
+
+    /*
     <record>
       <header>
         <identifier>oai:CiteSeerX.psu:10.1.1.1.2047</identifier>
@@ -31,27 +35,64 @@ import java.util.Date
         </oai_dc:dc>
       </metadata>
     </record>
- */
+*/
+
+    protected def setList(setter: List[String] => Unit)(f: NodeSeq) = {
+        setter(f.map(_.text).toList)
+    }
+    protected def setText(setter: String => Unit)(f: NodeSeq) = {
+        setter(f.text)
+    }
+
+    /**
+     * This is kind of gross, but the concept is that we create a field map,
+     * and then iterator over it and use the wrapped setter functions to set
+     * each field.
+     */
+    def loadString(xml: String) = {
+        val root = XML.loadString(xml)
+        val doc = new Document()
+        doc.header.identifier = (root \ "header" \ "identifier").text
+        doc.header.datestamp = (root \ "header" \ "datestamp").text
+        val fields = Map[String, NodeSeq => Unit](
+            "title" -> setText(doc.title_=),
+            "creator" -> setList(doc.creators_=),
+            "description" -> setText(doc.description_=),
+            "contributor" -> setText(doc.contributor_=),
+            "publisher" -> setText(doc.publisher_=),
+            "dates" -> setList(doc.dates_=),
+            "format" -> setText(doc.format_=),
+            "identifier" -> setText(doc.id_=),
+            "source" -> setText(doc.source_=),
+            "language" -> setText(doc.language_=),
+            "relation" -> setList(doc.relations_=),
+            "rights" -> setText(doc.rights_=))
+        for ((key, setter) <- fields) {
+            setter(root \ "metadata" \\ key)
+        }
+        doc
+    }
+}
 
 class Document {
-	class Header {
-		var identifier = ""
-		var datestamp = ""
-	}
-	
-	var header:Header = new Header()
-	var title = ""
-	var creators = Nil
-	var publisher = ""
-	var subject = ""
-	var contributor = ""
-	var description = ""
-	var tags = ""
-	var date = ""
-	var format = ""
-	var id = ""
-	var source = ""
-	var language = ""
-	var relations = Nil
-	var rights = ""
+    class Header {
+        var identifier = ""
+        var datestamp = ""
+    }
+
+    var header: Header = new Header()
+    var title = ""
+    var creators: List[String] = Nil
+    var publisher = ""
+    var subject = ""
+    var contributor = ""
+    var description = ""
+    var tags = ""
+    var dates: List[String] = Nil
+    var format = ""
+    var id = ""
+    var source = ""
+    var language = ""
+    var relations: List[String] = Nil
+    var rights = ""
 }
