@@ -1,3 +1,5 @@
+seq(com.github.retronym.SbtOneJar.oneJarSettings: _*)
+
 name := "csx-downloader"
 
 version := "0.1-SNAPSHOT"
@@ -24,3 +26,5 @@ libraryDependencies += "com.github.scala-incubator.io" %% "scala-io-file" % "0.4
 //libraryDependencies += "se.scalablesolutions.akka" %% "akka-actor" % "1.3.1"
 
 libraryDependencies += "net.liftweb" %% "lift-json" % "2.4-SNAPSHOT"
+
+artifact in oneJar <<= moduleName(Artifact(_, "-standalone"))
