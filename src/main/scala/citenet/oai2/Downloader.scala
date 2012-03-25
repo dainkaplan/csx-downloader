@@ -4,6 +4,21 @@ import java.io.File
 import scalax.io.JavaConverters._
 
 /**
+ * Allows for restoring downloads with a simple call to a method to fetch the token 
+ * if one exists before downloading begins.
+ */
+trait ResumableDownloader extends Downloader {
+    def restoreResumptionToken:Option[String]
+    override def download(handler: (String => Unit)) {
+        if (resumptionToken == None) {
+            resumptionToken = restoreResumptionToken
+            if (resumptionToken != None) println("Restoring download with resumption token " + resumptionToken)
+        }
+        super.download(handler)
+    }
+}
+
+/**
  * Base class for OAI2 interaction. By extending this, other OAI2 provides could be accessed.
  * */
 abstract class Downloader {
@@ -66,15 +81,6 @@ abstract class Downloader {
 }
 
 object Downloader {
-    /**
-     * Searches for a resumption token within a file specified by filename.
-     */
-    def findResumptionTokenInFile(path: String)(filename: String): Option[String] = {
-        val str = new File(path + "/" + filename).asInput.slurpString(io.Codec.UTF8)
-        val token = findResumptionToken(str)
-        token
-    }
-
     def findResumptionToken(str: String): Option[String] = {
         var token: Option[String] = None
         val regex = """^<resumptionToken>([^<]+)</resumptionToken>.*""".r

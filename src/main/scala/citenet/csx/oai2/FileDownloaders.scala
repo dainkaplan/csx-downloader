@@ -19,7 +19,7 @@ class RawFilesDownloader(override val outputDir: Option[String]) extends FileDow
 /**
  * Mix in for the JsonFilesDownloader.
  */
-trait JsonFiles extends IsFileDownloader {
+trait JsonFiles {
     def tmpDirectory: java.io.File
     var resumptionToken: Option[String]
     def restoreResumptionToken: Option[String] = {
@@ -61,12 +61,12 @@ object JsonFiles {
 /**
  * Mix in for RawFilesDownloader
  */
-trait RawFiles extends IsFileDownloader {
+trait RawFiles {
     var count = 0
     def tmpDirectory: java.io.File
     var resumptionToken: Option[String]
     def restoreResumptionToken: Option[String] = {
-        val (token, lastCount) = RawFiles.findLastToken(tmpDirectory.list(), citenet.oai2.Downloader.findResumptionTokenInFile(tmpDirectory.getAbsolutePath()))
+        val (token, lastCount) = RawFiles.findLastToken(tmpDirectory.list(), RawFiles.findResumptionTokenInFile(tmpDirectory.getAbsolutePath()))
         count = lastCount
         token
     }
@@ -115,22 +115,21 @@ object RawFiles {
         })
         (lastToken, lastCount)
     }
-}
-
-/**
- * Base traite for the mix-ins, this insures they implement everything needed.
- */
-trait IsFileDownloader {
-    def restoreResumptionToken: Option[String]
-    def saveContent(src: String)
-    def tmpDirectory: java.io.File
-    var resumptionToken: Option[String]
+    /**
+     * Searches for a resumption token within a file specified by filename.
+     */
+    def findResumptionTokenInFile(path: String)(filename: String): Option[String] = {
+        val str = new File(path + "/" + filename).asInput.slurpString(io.Codec.UTF8)
+        val token = citenet.oai2.Downloader.findResumptionToken(str)
+        token
+    }
 }
 
 /**
  * all the base-logic for saving the data to files.
  */
-trait FileDownloader extends Downloader with IsFileDownloader {
+trait FileDownloader extends Downloader {
+    def saveContent(src: String)
     val outputDir: Option[String] = None
     def tmpDirectory: java.io.File = outputDir match {
         case Some(dir) => {
@@ -154,10 +153,6 @@ trait FileDownloader extends Downloader with IsFileDownloader {
 
     override def download(handler: (String => Unit) = Noop) {
         tmpDirectory
-        if (resumptionToken == None) {
-            resumptionToken = restoreResumptionToken
-            if (resumptionToken != None) println("Restoring download with resumption token " + resumptionToken)
-        }
         super.download((src) => saveAndThen(src)(handler))
     }
 }
