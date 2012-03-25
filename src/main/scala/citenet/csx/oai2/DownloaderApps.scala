@@ -7,7 +7,7 @@ object DownloaderApp extends App {
     val path = f.getAbsolutePath()
     println("Will save raw data to " + path)
     var rawfiles = new RawFilesDownloader(Some(dir))
-    rawfiles.maxLoops = 1
+    rawfiles.maxLoops = Int.MaxValue
     rawfiles.download()
 }
 
@@ -18,6 +18,6 @@ object JsonDownloaderApp extends App {
     val path = f.getAbsolutePath()
     println("Will save json data to " + path)
     var rawfiles = new JsonFilesDownloader(Some(dir))
-    rawfiles.maxLoops = 1
+    rawfiles.maxLoops = Int.MaxValue
     rawfiles.download()
 }

@@ -21,6 +21,7 @@ class RawFilesDownloader(override val outputDir: Option[String]) extends FileDow
  */
 trait JsonFiles extends IsFileDownloader {
     def tmpDirectory: java.io.File
+    var resumptionToken: Option[String]
     def restoreResumptionToken: Option[String] = {
         val tokenFile = new File(tmpDirectory.getAbsolutePath() + "/resumptionToken.tmp")
         if (!tokenFile.exists()) {
@@ -37,7 +38,7 @@ trait JsonFiles extends IsFileDownloader {
     def saveContent(content: String) = {
         new File(tmpDirectory.getAbsolutePath() + "/resumptionToken.tmp").delete()
         new File(tmpDirectory.getAbsolutePath() + "/resumptionToken.tmp").asOutput.write(resumptionToken.getOrElse(""))
-        Document.toDocumentList(content).foreach(doc => {
+        Document.toDocumentList(content).foreach((doc:Document) => {
             val json = JsonFiles.convert(doc)
             File.createTempFile("doi-" + doi(doc.header.identifier) + "-", ".json", tmpDirectory).asOutput.write(json)
         })
@@ -63,6 +64,7 @@ object JsonFiles {
 trait RawFiles extends IsFileDownloader {
     var count = 0
     def tmpDirectory: java.io.File
+    var resumptionToken: Option[String]
     def restoreResumptionToken: Option[String] = {
         val (token, lastCount) = RawFiles.findLastToken(tmpDirectory.list(), citenet.oai2.Downloader.findResumptionTokenInFile(tmpDirectory.getAbsolutePath()))
         count = lastCount
@@ -137,7 +139,7 @@ trait FileDownloader extends Downloader with IsFileDownloader {
                 f
             else {
                 f.mkdirs()
-                println("Note: output directory was created because it did not exist.")
+                println("Note: output directory \"%s\" was created because it did not exist.".format(f.getAbsolutePath()))
                 f
             }
         }
@@ -151,6 +153,7 @@ trait FileDownloader extends Downloader with IsFileDownloader {
     }
 
     override def download(handler: (String => Unit) = Noop) {
+        tmpDirectory
         if (resumptionToken == None) {
             resumptionToken = restoreResumptionToken
             if (resumptionToken != None) println("Restoring download with resumption token " + resumptionToken)

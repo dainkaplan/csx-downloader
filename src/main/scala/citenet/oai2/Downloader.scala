@@ -10,7 +10,7 @@ abstract class Downloader {
     val baseUrl: String
     val initUrl: String
     def resumeUrl(token: String): String
-    var maxLoops: Int = 9999
+    var maxLoops: Int = Int.MaxValue
     var maxDownloadTries = 10
     var resumptionToken: Option[String] = None
 
@@ -33,7 +33,10 @@ abstract class Downloader {
                     handler(str)
                     if (resumptionToken == None) return // we're done
                 }
-                case None => return // either we errored out too many times, or we're done
+                case None => {
+                    resumptionToken = None
+                    return // either we errored out too many times, or we're done
+                }
             }
         }
     }

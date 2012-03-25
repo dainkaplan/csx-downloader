@@ -3,7 +3,7 @@ import org.scalatest.FunSuite
 
 /* Keeps downloading the same file over and over */
 class MockDownloader extends citenet.oai2.Downloader {
-    val baseUrl = ""//new java.io.File("").getAbsolutePath()
+    val baseUrl = "" //new java.io.File("").getAbsolutePath()
     val initUrl = baseUrl + "oai-3687964461435121722.tmp-1"
     def resumeUrl(token: String) = "oai-3687964461435121722.tmp-1"
 }
@@ -24,8 +24,8 @@ class DocumentDownloaderTests extends FunSuite {
 }
 
 class DownloaderTests extends FunSuite {
-	import citenet.oai2._
-	
+    import citenet.oai2._
+
     test("can properly find resumption tokens") {
         expect(Some("bird is the word")) {
             Downloader.findResumptionToken("    <resumptionToken>bird is the word</resumptionToken>")
@@ -34,7 +34,7 @@ class DownloaderTests extends FunSuite {
             Downloader.findResumptionToken("<resurrectionToken>elvis</resurrectionToken>")
         }
     }
-	
+
     test("can properly find resumption token from real file") {
         import scalax.io.JavaConverters._
         expect(Some("10.1.1.1.2047-1751385-500-oai_dc")) {
@@ -45,6 +45,52 @@ class DownloaderTests extends FunSuite {
 }
 
 class RawFilesTests extends FunSuite {
+
+    // XXX The convoluted nature of this test proves that the code should be restructured...
+    test("can resume json files with resumption token") {
+        def validateToken(token: String) = {
+            expect(Some("10.1.1.1.2047-1751385-500-oai_dc")) { Some(token) }
+            "oai-3687964461435121722.tmp-1"
+        }
+
+        class JsonFilesMockDownloader(override val outputDir: Option[String]) extends FileDownloader with JsonFiles {
+            override val baseUrl = new java.io.File("./").getAbsolutePath()
+            override val initUrl = baseUrl + "/oai-3687964461435121722.tmp-1"
+            override def resumeUrl(token: String) = baseUrl + "/" + validateToken(token)
+            override def saveContent(src: String) = {}
+        }
+
+        var mock = new JsonFilesMockDownloader(Some("./"))
+        mock.maxLoops = 1
+        mock.download(content => {})
+
+        // Check if we properly fetched the resumption token from the second file.
+        assert(Some("10.1.1.1.2047-1751385-500-oai_dc") === mock.resumptionToken)
+    }
+
+    // XXX The convoluted nature of this test proves that the code should be restructured...
+    test("can resume raw files with resumption token") {
+        def validateToken(token: String) = {
+            expect(Some("10.1.1.1.2047-1751385-500-oai_dc")) { Some(token) }
+            "oai-3687964461435121722.tmp-1"
+        }
+
+        class RawFilesMockDownloader(override val outputDir: Option[String]) extends FileDownloader with RawFiles {
+            override val baseUrl = new java.io.File("./").getAbsolutePath()
+            override val initUrl = baseUrl + "/oai-3687964461435121722.tmp-1"
+            override def resumeUrl(token: String) = baseUrl + "/" + validateToken(token)
+            override def saveContent(src: String) = {
+                count += 1
+            }
+        }
+
+        var mock = new RawFilesMockDownloader(Some("./"))
+        mock.maxLoops = 1
+        mock.download(content => {})
+
+        // Check if we properly fetched the resumption token from the second file.
+        assert(Some("10.1.1.1.2047-1751385-500-oai_dc") === mock.resumptionToken)
+    }
 
     test("can filter raw files") {
         val files = Array(
