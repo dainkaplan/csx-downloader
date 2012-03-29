@@ -12,4 +12,16 @@ class DocumentDownloader(dler: citenet.oai2.Downloader) {
             })
         })
     }
+    
+    // ============================================================
+    // ======================== FOR JAVA ==========================
+    trait DownloadCallback {
+        def handleDownload(doc: Document)
+    }
+
+    def download(handler: DownloadCallback) {
+        download(handler.handleDownload _)
+    }
+    // ======================== FOR JAVA ==========================
+    // ============================================================
 }

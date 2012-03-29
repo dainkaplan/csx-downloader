@@ -17,3 +17,10 @@ abstract class Downloader extends citenet.oai2.ResumableDownloader {
     // Gives a callback mechanism for restoring rather than setting in advance; not implemented here.
     // def restoreResumptionToken: Option[String] = None 
 }
+
+/**
+ * For use with, for example, the document downloader.
+ * */
+class SimpleDownloader extends Downloader {
+    def restoreResumptionToken: Option[String] = None 
+}

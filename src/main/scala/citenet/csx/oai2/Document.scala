@@ -1,5 +1,6 @@
 package citenet.csx.oai2
 import java.util.Date
+import scala.reflect._
 
 object Document {
     import scala.xml.XML
@@ -88,23 +89,22 @@ object Document {
 }
 
 case class DocumentHeader(
-    var identifier: String = "",
-    var datestamp: String = "")
+    @BeanProperty var identifier: String = "",
+    @BeanProperty var datestamp: String = "")
 
 case class Document(
-    var header: DocumentHeader = new DocumentHeader(),
-    var title: String = "",
-    var creators: List[String] = Nil,
-    var publisher: String = "",
-    var subject: String = "",
-    var contributor: String = "",
-    var description: String = "",
-    var tags: String = "",
-    var dates: List[String] = Nil,
-    var format: String = "",
-    var id: String = "",
-    var source: String = "",
-    var language: String = "",
-    var relations: List[String] = Nil,
-    var rights: String = "") {
-}
+    @BeanProperty var header: DocumentHeader = new DocumentHeader(),
+    @BeanProperty var title: String = "",
+    @BeanProperty var creators: List[String] = Nil,
+    @BeanProperty var publisher: String = "",
+    @BeanProperty var subject: String = "",
+    @BeanProperty var contributor: String = "",
+    @BeanProperty var description: String = "",
+    @BeanProperty var tags: String = "",
+    @BeanProperty var dates: List[String] = Nil,
+    @BeanProperty var format: String = "",
+    @BeanProperty var id: String = "",
+    @BeanProperty var source: String = "",
+    @BeanProperty var language: String = "",
+    @BeanProperty var relations: List[String] = Nil,
+    @BeanProperty var rights: String = "")
